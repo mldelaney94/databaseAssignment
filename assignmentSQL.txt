@@ -1,0 +1,183 @@
+q1
+SELECT company.name,
+    company.country
+   FROM company
+  WHERE company.country::text <> 'Australia'::text;
+  
+q2
+
+ SELECT executive.code
+   FROM executive
+  GROUP BY executive.code
+ HAVING count(executive.code) > 5;
+ 
+q3
+
+ SELECT company.name
+   FROM category,
+    company
+  WHERE category.sector::text = 'Technology'::text AND 
+  company.code = category.code;
+  
+q4
+
+ SELECT category.sector,
+    count(DISTINCT category.industry) AS count
+   FROM category
+  GROUP BY category.sector;
+
+q5
+
+ SELECT executive.person
+   FROM category,
+    executive
+  WHERE executive.code = category.code AND 
+  category.sector::text = 'Technology'::text
+  GROUP BY executive.person;
+
+q6
+ SELECT company.name
+   FROM company,
+    category
+  WHERE company.code = category.code AND category.sector::text = 'Services'::text AND 
+  "left"(company.zip::text, 1) = '2'::text;
+
+q7
+
+ SELECT asx."Date",
+    asx.code,
+    asx.volume,
+    asxlog.oldprice,
+    asx.price,
+    asx.price - asxlog.oldprice AS "Change",
+    trunc(asx.price / asxlog.oldprice * 100::numeric - 100::numeric, 2) AS "Gain"
+   FROM asxlog,
+    asx
+  WHERE asxlog.code = asx.code;
+  
+q8
+
+ SELECT asx."Date",
+    asx.code,
+    asx.volume
+   FROM asx
+  WHERE asx.volume = (( SELECT max(asx_1.volume) AS max
+           FROM asx asx_1));
+		  
+q9
+ SELECT category.sector,
+    category.industry,
+    count(category.industry) AS "Companies in Industry"
+   FROM category
+  GROUP BY category.sector, category.industry
+  ORDER BY category.sector, category.industry;
+  
+q10
+
+ SELECT category.code,
+    category.industry
+   FROM category
+  WHERE (category.industry::text IN ( SELECT category_1.industry
+           FROM category category_1
+          GROUP BY category_1.industry
+         HAVING count(category_1.industry) = 1));
+		 
+q11
+ SELECT category.sector AS "Sector",
+    trunc(avg(rating.star), 2) AS "AvgRating"
+   FROM category,
+    rating
+  WHERE category.code = rating.code
+  GROUP BY category.sector;
+  
+q12
+
+ SELECT executive.person AS "Name"
+   FROM executive
+  GROUP BY executive.person
+ HAVING count(executive.person) > 1;
+ 
+ q13
+ 
+  SELECT company.code,
+    company.name,
+    company.address,
+    company.zip,
+    category.sector
+   FROM category,
+    company
+  WHERE company.code = category.code AND NOT (category.sector::text IN ( SELECT category_1.sector
+           FROM category category_1,
+            company company_1
+          WHERE category_1.code = company_1.code AND company_1.country::text <> 'Australia'::text))
+  GROUP BY company.code, category.sector;
+
+q14  
+   WITH cte AS (
+         SELECT company.code,
+            ( SELECT asx.price
+                   FROM asx
+                  WHERE company.code = asx.code
+                  ORDER BY asx."Date"
+                 LIMIT 1) AS beginprice,
+            ( SELECT asx.price
+                   FROM asx
+                  WHERE company.code = asx.code
+                  ORDER BY asx."Date" DESC
+                 LIMIT 1) AS endprice
+           FROM company
+        )
+		
+ SELECT cte.code,
+    cte.beginprice,
+    cte.endprice,
+    cte.endprice - cte.beginprice AS change,
+    trunc((cte.endprice - cte.beginprice) / cte.endprice, 2) AS gain
+   FROM cte
+  ORDER BY ((cte.endprice - cte.beginprice) / cte.endprice) DESC, cte.code;
+  
+  q15
+  
+   WITH cte AS (
+         SELECT asx_1.code,
+            asx_1.price - lag(asx_1.price, 1) OVER (ORDER BY asx_1.code, asx_1."Date") AS gain
+           FROM asx asx_1,
+            company
+          WHERE asx_1.code = company.code
+          GROUP BY asx_1.code, asx_1.price, asx_1."Date"
+        )
+ SELECT asx.code,
+    min(asx.price) AS minprice,
+    trunc(avg(asx.price), 2) AS avgprice,
+    max(asx.price) AS maxprice,
+    min(cte.gain) AS mingain,
+    trunc(avg(cte.gain), 2) AS avggain,
+    max(cte.gain) AS maxgain
+   FROM asx,
+    cte
+  WHERE asx.code = cte.code
+  GROUP BY asx.code;
+  
+  q16
+  
+  begin
+	if (EXISTS (SELECT executive
+			   FROM executive
+			   WHERE executive.person = new.person)) THEN
+		raise exception 'Person cannot be affiliated with more than one company';
+	end if;
+	return new;
+end;
+
+q17
+
+n/a
+
+q18
+
+begin
+	insert into asxlog values(current_timestamp, old."Date", old.code, old.volume, old.price);
+   return new;
+end;
+
+Insert before or timestamp will not be correct
